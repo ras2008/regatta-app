@@ -24,6 +24,7 @@ interface RegattaDB extends DBSchema {
   roster: { key: string; value: RosterRow };
   meta: { key: string; value: Meta };
   events: { key: string; value: any };
+  dollies: { key: string; value: any };
 }
 
 async function getDB() {
