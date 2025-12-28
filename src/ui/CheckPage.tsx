@@ -7,9 +7,11 @@ import {
   findSail,
   flagEmoji,
   getClasses,
+  getEvents,
   progressSnapshot,
   rosterLoaded,
   type EventType,
+  type EventRow,
 } from "../lib/regatta";
 
 function cn(...xs: Array<string | false | null | undefined>) {
@@ -95,6 +97,10 @@ export default function CheckPage({
   });
 
   const [progress, setProgress] = useState<{ className: string; total: number; done: number }[]>([]);
+
+  const [events, setEvents] = useState<EventRow[]>([]);
+  const [search, setSearch] = useState("");
+
   const [lastHit, setLastHit] = useState<null | {
     className: string;
     Country: string;
@@ -113,6 +119,8 @@ export default function CheckPage({
 
   async function refresh(whichMode: EventType = mode) {
     setProgress(await progressSnapshot(whichMode));
+    const all = await getEvents();
+    setEvents(all);
   }
 
   useEffect(() => {
@@ -320,39 +328,6 @@ export default function CheckPage({
         </section>
 
         {/* Progress by class */}
-
-        {/* Sticky Last scanned (bottom) */}
-        {lastHit ? (
-          <div className="fixed inset-x-0 bottom-20 z-40 md:bottom-6">
-            <div className="mx-auto max-w-6xl px-4">
-              <div className="rounded-3xl border border-white/10 bg-black/55 p-4 shadow-2xl backdrop-blur-xl ring-1 ring-white/10">
-                <div className="flex items-center gap-4">
-                  {/* placeholder photo */}
-                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5 ring-1 ring-white/5">
-                    <div className="grid h-full w-full place-items-center text-[11px] text-slate-300">No pic</div>
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs uppercase tracking-wide text-slate-400">
-                      Last {mode === "check_out" ? "Checked Out" : "Checked In"}
-                    </div>
-                    <div className="truncate text-base font-semibold text-white">
-                      {flagEmoji(lastHit.Country)} {lastHit.Crew}
-                    </div>
-                    <div className="truncate text-sm text-slate-300">
-                      {lastHit.className} • Bow <span className="font-semibold text-white">{lastHit.Bow}</span> • Sail{" "}
-                      <span className="font-semibold text-white">{lastHit.Sail}</span>
-                    </div>
-                  </div>
-
-                  <div className="hidden text-right text-xs text-slate-400 md:block">Tap scan / enter next</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </div>
-
         <section className="rounded-3xl border border-white/10 bg-white/5 p-6 ring-1 ring-white/5">
           <div className="flex items-end justify-between gap-4">
             <div>
@@ -381,6 +356,94 @@ export default function CheckPage({
             })}
           </div>
         </section>
+
+        {/* Activity list */}
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-6 ring-1 ring-white/5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <div className="text-lg font-semibold">
+                {title} list
+              </div>
+              <div className="mt-1 text-sm text-slate-300">
+                Search by sail # or sailor name. Showing most recent first.
+              </div>
+            </div>
+
+            <div className="w-full md:w-[360px]">
+              <label className="text-sm text-slate-300">Search</label>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="e.g. 214567 or Smith"
+                className="mt-1 w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-base outline-none focus:ring-2 focus:ring-white/20"
+              />
+            </div>
+          </div>
+
+          {(() => {
+            const q = search.trim().toLowerCase();
+            const filtered = events
+              .filter((e) => e.type === mode)
+              .filter((e) => (classFilter === "ALL" ? true : e.className === classFilter))
+              .filter((e) => {
+                if (!q) return true;
+                const sail = String(e.Sail ?? "").toLowerCase();
+                const crew = String(e.Crew ?? "").toLowerCase();
+                const bow = String(e.Bow ?? "").toLowerCase();
+                return sail.includes(q) || crew.includes(q) || bow.includes(q);
+              })
+              .slice(0, 200);
+
+            if (!filtered.length) {
+              return (
+                <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950/40 p-4 text-sm text-slate-300">
+                  No entries yet.
+                </div>
+              );
+            }
+
+            return (
+              <div className="mt-5 overflow-hidden rounded-2xl border border-white/10">
+                <div className="max-h-[60vh] overflow-auto">
+                  <ul className="divide-y divide-white/10 bg-slate-950/20">
+                    {filtered.map((e) => (
+                      <li key={e.id} className="p-4">
+                        <div className="flex items-center gap-4">
+                          {/* placeholder photo */}
+                          <div className="h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5 ring-1 ring-white/5">
+                            <div className="grid h-full w-full place-items-center text-[11px] text-slate-300">No pic</div>
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-base font-semibold text-white">
+                              {flagEmoji(e.Country)} {e.Crew}
+                            </div>
+                            <div className="truncate text-sm text-slate-300">
+                              {e.className} • Bow <span className="font-semibold text-white">{e.Bow}</span> • Sail{" "}
+                              <span className="font-semibold text-white">{e.Sail}</span>
+                            </div>
+                            <div className="truncate text-xs text-slate-400">{e.Club}</div>
+                          </div>
+
+                          <div className="text-right">
+                            <div className="text-xs text-slate-400">Time</div>
+                            <div className="text-sm font-mono text-slate-200">
+                              {new Date(e.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </div>
+                            <div className="mt-1 text-[11px] text-slate-400">
+                              {e.method === "live_beta" ? "live" : e.method}
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            );
+          })()}
+        </section>
+      </div>
     </>
   );
 }
