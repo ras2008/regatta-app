@@ -9,6 +9,7 @@ const nav = [
   { href: "/checkin", label: "Check In" },
   { href: "/reports", label: "Reports" },
   { href: "/admin", label: "Admin" },
+  { href: "/dollies", title: "Dollies", desc: "Track ok / missing / broken", kbd: "DLY" },
 ];
 
 function cn(...xs: Array<string | false | null | undefined>) {

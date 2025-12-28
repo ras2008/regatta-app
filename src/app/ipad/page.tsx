@@ -3,6 +3,7 @@ import Link from "next/link";
 const tiles = [
   { href: "/checkout", title: "Check Out", desc: "Log sailors leaving for the day", kbd: "OUT" },
   { href: "/checkin", title: "Check In", desc: "Log sailors returning", kbd: "IN" },
+  { href: "/dollies", title: "Dollies", desc: "Track ok / missing / broken", kbd: "DLY" },
   { href: "/reports", title: "Reports", desc: "Export logs + summaries", kbd: "CSV" },
   { href: "/admin", title: "Admin", desc: "Upload class CSVs", kbd: "SET" },
 ];

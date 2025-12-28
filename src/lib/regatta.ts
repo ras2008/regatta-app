@@ -93,11 +93,16 @@ async function getDB() {
 }
 
 export function normalizeSail(v: string) {
-  return String(v ?? "")
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, "")
-    .replace(/[^A-Z0-9]/g, "");
+  const raw = String(v ?? "").trim().toUpperCase();
+
+  // Remove spaces/dashes etc.
+  const compact = raw.replace(/\s+/g, "").replace(/[^A-Z0-9]/g, "");
+
+  // If it contains digits, keep only digits (handles USA214567, GBR12345, etc.)
+  const digits = compact.replace(/[^0-9]/g, "");
+
+  // Fall back to compact if there are no digits (rare, but safe)
+  return digits || compact;
 }
 
 export function flagEmoji(countryRaw?: string) {
