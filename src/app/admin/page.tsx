@@ -93,6 +93,94 @@ function splitDelimited(line: string, delim: string) {
   return out;
 }
 
+const THREE_TO_TWO: Record<string, string> = {
+  USA: "US",
+  GBR: "GB",
+  AUS: "AU",
+  NZL: "NZ",
+  CAN: "CA",
+  IRL: "IE",
+  RSA: "ZA",
+  GER: "DE",
+  FRA: "FR",
+  ESP: "ES",
+  ITA: "IT",
+  NED: "NL",
+  BEL: "BE",
+  DEN: "DK",
+  NOR: "NO",
+  SWE: "SE",
+  FIN: "FI",
+  SUI: "CH",
+  AUT: "AT",
+  POR: "PT",
+  BRA: "BR",
+  ARG: "AR",
+  MEX: "MX",
+  CHI: "CL",
+  PER: "PE",
+  COL: "CO",
+  URU: "UY",
+  ECU: "EC",
+  VEN: "VE",
+  JPN: "JP",
+  KOR: "KR",
+  CHN: "CN",
+  HKG: "HK",
+  TPE: "TW",
+  SGP: "SG",
+  MAS: "MY",
+  THA: "TH",
+  PHI: "PH",
+  INA: "ID",
+  IND: "IN",
+  PAK: "PK",
+  SRI: "LK",
+  UAE: "AE",
+  ISR: "IL",
+  EGY: "EG",
+  MAR: "MA",
+  TUN: "TN",
+  ALG: "DZ",
+  KEN: "KE",
+  NGA: "NG",
+  GHA: "GH",
+  CMR: "CM",
+  SEN: "SN",
+  ANG: "AO",
+  GRE: "GR",
+  TUR: "TR",
+  CRO: "HR",
+  SRB: "RS",
+  SLO: "SI",
+  SVK: "SK",
+  CZE: "CZ",
+  POL: "PL",
+  HUN: "HU",
+  ROU: "RO",
+  BUL: "BG",
+  UKR: "UA",
+  RUS: "RU",
+};
+
+function inferCountryFromSail(sail: string): string {
+  const raw = String(sail ?? "").toUpperCase().trim();
+  const compact = raw.replace(/\s+/g, "").replace(/[^A-Z0-9]/g, "");
+  const prefixLetters = compact.match(/^[A-Z]+/)?.[0] ?? "";
+
+  // Prefer 3-letter -> 2-letter mapping if present
+  if (prefixLetters.length >= 3) {
+    const three = prefixLetters.slice(0, 3);
+    const mapped = THREE_TO_TWO[three];
+    if (mapped) return mapped;
+  }
+
+  // Otherwise fall back to first 2 letters (best-effort)
+  if (prefixLetters.length >= 2) return prefixLetters.slice(0, 2);
+
+  return "";
+}
+
 async function parseCSV(file: File) {
   const text = stripBOM(await file.text());
   const lines = text
@@ -122,11 +210,16 @@ async function parseCSV(file: File) {
   for (let i = 1; i < lines.length; i++) {
     const cols = splitDelimited(lines[i], delim);
 
-    const Country = (cols[idx("country")] ?? "").trim();
+    let Country = (cols[idx("country")] ?? "").trim();
     const Sail = (cols[idx("sail")] ?? "").trim();
     const BowRaw = (cols[idx("bow")] ?? "").trim();
     const Crew = (cols[idx("crew")] ?? "").trim();
     const Club = (cols[idx("club")] ?? "").trim();
+
+    // If Country is not provided, try to infer from sail prefix (e.g., "USA214567", "GBR-12345", "US 12345")
+    if (!Country) {
+      Country = inferCountryFromSail(Sail);
+    }
 
     const Bow = Number(BowRaw);
     if (!Sail || !Crew || !Number.isFinite(Bow)) continue;
