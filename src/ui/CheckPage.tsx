@@ -251,10 +251,10 @@ export default function CheckPage({
           </div>
         </section>
 
-        {/* Entry + Last Hit */}
+        {/* Entry */}
         <section className="grid gap-4 lg:grid-cols-3">
           {/* Entry Card */}
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 ring-1 ring-white/5 lg:col-span-2">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 ring-1 ring-white/5 lg:col-span-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-lg font-semibold">Quick entry</div>
@@ -317,38 +317,42 @@ export default function CheckPage({
               Confirm {title}
             </button>
           </div>
-
-          {/* Last Hit Card */}
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 ring-1 ring-white/5">
-            <div className="text-lg font-semibold">Last scanned</div>
-            <div className="mt-1 text-sm text-slate-300">Most recent match.</div>
-
-            {lastHit ? (
-              <div className="mt-5 flex gap-4">
-                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 ring-1 ring-white/5">
-                  <div className="grid h-full w-full place-items-center text-xs text-slate-300">No pic</div>
-                </div>
-
-                <div className="min-w-0">
-                  <div className="truncate text-base font-semibold">
-                    {flagEmoji(lastHit.Country)} {lastHit.Crew}
-                  </div>
-                  <div className="mt-1 text-sm text-slate-300">
-                    {lastHit.className} • Bow <span className="font-semibold text-slate-100">{lastHit.Bow}</span> • Sail{" "}
-                    <span className="font-semibold text-slate-100">{lastHit.Sail}</span>
-                  </div>
-                  <div className="mt-1 truncate text-sm text-slate-400">{lastHit.Club}</div>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950/40 p-4 text-sm text-slate-300">
-                No entries yet.
-              </div>
-            )}
-          </div>
         </section>
 
         {/* Progress by class */}
+
+        {/* Sticky Last scanned (bottom) */}
+        {lastHit ? (
+          <div className="fixed inset-x-0 bottom-20 z-40 md:bottom-6">
+            <div className="mx-auto max-w-6xl px-4">
+              <div className="rounded-3xl border border-white/10 bg-black/55 p-4 shadow-2xl backdrop-blur-xl ring-1 ring-white/10">
+                <div className="flex items-center gap-4">
+                  {/* placeholder photo */}
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5 ring-1 ring-white/5">
+                    <div className="grid h-full w-full place-items-center text-[11px] text-slate-300">No pic</div>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs uppercase tracking-wide text-slate-400">
+                      Last {mode === "check_out" ? "Checked Out" : "Checked In"}
+                    </div>
+                    <div className="truncate text-base font-semibold text-white">
+                      {flagEmoji(lastHit.Country)} {lastHit.Crew}
+                    </div>
+                    <div className="truncate text-sm text-slate-300">
+                      {lastHit.className} • Bow <span className="font-semibold text-white">{lastHit.Bow}</span> • Sail{" "}
+                      <span className="font-semibold text-white">{lastHit.Sail}</span>
+                    </div>
+                  </div>
+
+                  <div className="hidden text-right text-xs text-slate-400 md:block">Tap scan / enter next</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
         <section className="rounded-3xl border border-white/10 bg-white/5 p-6 ring-1 ring-white/5">
           <div className="flex items-end justify-between gap-4">
             <div>
@@ -377,7 +381,6 @@ export default function CheckPage({
             })}
           </div>
         </section>
-      </div>
     </>
   );
 }
