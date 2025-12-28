@@ -41,36 +41,99 @@ async function getDB() {
 }
 
 function normalizeSail(v: string) {
-  return String(v ?? "").trim().toUpperCase().replace(/\s+/g, "").replace(/[^A-Z0-9]/g, "");
+  const raw = String(v ?? "").trim().toUpperCase();
+  const compact = raw.replace(/\s+/g, "").replace(/[^A-Z0-9]/g, "");
+  const digits = compact.replace(/[^0-9]/g, "");
+  return digits || compact;
 }
 
-function parseCSVLine(line: string) {
-  return line.split(",").map((x) => x.trim());
+function stripBOM(s: string) {
+  return s.replace(/^\uFEFF/, "");
+}
+
+function detectDelimiter(headerLine: string) {
+  const line = stripBOM(headerLine);
+  const counts = {
+    ",": (line.match(/,/g) || []).length,
+    ";": (line.match(/;/g) || []).length,
+    "\t": (line.match(/\t/g) || []).length,
+  };
+  const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  return (best?.[0] as "," | ";" | "\t") || ",";
+}
+
+function splitDelimited(line: string, delim: string) {
+  const out: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (!inQuotes && ch === delim) {
+      out.push(cur.trim());
+      cur = "";
+      continue;
+    }
+
+    cur += ch;
+  }
+
+  out.push(cur.trim());
+  return out;
 }
 
 async function parseCSV(file: File) {
-  const text = await file.text();
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const text = stripBOM(await file.text());
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
   if (lines.length < 2) throw new Error(`"${file.name}" has no data rows.`);
 
-  const headers = parseCSVLine(lines[0]).map((h) => h.toLowerCase());
+  const delim = detectDelimiter(lines[0]);
+  const headers = splitDelimited(lines[0], delim).map((h) => stripBOM(h).trim().toLowerCase());
   const required = ["country", "sail", "bow", "crew", "club"];
-  for (const r of required) if (!headers.includes(r)) throw new Error(`"${file.name}" missing column: ${r}`);
+
+  for (const r of required) {
+    if (!headers.includes(r)) {
+      throw new Error(
+        `"${file.name}" missing column: ${r} (detected delimiter: ${delim === "\t" ? "TAB" : delim})`
+      );
+    }
+  }
 
   const idx = (name: string) => headers.indexOf(name);
   const className = file.name.replace(/\.csv$/i, "");
 
   const rows: Array<Omit<RosterRow, "id" | "sailNorm">> = [];
+
   for (let i = 1; i < lines.length; i++) {
-    const cols = parseCSVLine(lines[i]);
-    const Country = cols[idx("country")] ?? "";
-    const Sail = cols[idx("sail")] ?? "";
-    const Bow = Number(cols[idx("bow")]);
-    const Crew = cols[idx("crew")] ?? "";
-    const Club = cols[idx("club")] ?? "";
-    if (!Sail.trim() || !Crew.trim() || !Number.isFinite(Bow)) continue;
-    rows.push({ className, Country: Country.trim(), Sail: Sail.trim(), Bow, Crew: Crew.trim(), Club: Club.trim() });
+    const cols = splitDelimited(lines[i], delim);
+
+    const Country = (cols[idx("country")] ?? "").trim();
+    const Sail = (cols[idx("sail")] ?? "").trim();
+    const BowRaw = (cols[idx("bow")] ?? "").trim();
+    const Crew = (cols[idx("crew")] ?? "").trim();
+    const Club = (cols[idx("club")] ?? "").trim();
+
+    const Bow = Number(BowRaw);
+    if (!Sail || !Crew || !Number.isFinite(Bow)) continue;
+
+    rows.push({ className, Country, Sail, Bow, Crew, Club });
   }
+
   return rows;
 }
 
@@ -156,9 +219,10 @@ export default function AdminPage() {
     setBusy(true);
     try {
       const db = await getDB();
-      const tx = db.transaction(["roster", "meta", "events"], "readwrite");
+      const tx = db.transaction(["roster", "meta", "events", "dollies"], "readwrite");
       await tx.objectStore("roster").clear();
       await tx.objectStore("events").clear();
+      await tx.objectStore("dollies").clear();
       await tx.objectStore("meta").delete("app");
       await tx.done;
       setMeta(null);
