@@ -27,11 +27,14 @@ interface RegattaDB extends DBSchema {
 }
 
 async function getDB() {
-  return openDB<RegattaDB>("regatta-check-db", 2, {
+  return openDB<RegattaDB>("regatta-check-db", 3, {
     upgrade(db) {
       if (!db.objectStoreNames.contains("roster")) db.createObjectStore("roster", { keyPath: "id" });
       if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta");
       if (!db.objectStoreNames.contains("events")) db.createObjectStore("events", { keyPath: "id" });
+      if (!db.objectStoreNames.contains("dollies")) {
+        db.createObjectStore("dollies", { keyPath: "id" });
+      }
     },
   });
 }
